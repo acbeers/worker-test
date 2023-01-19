@@ -5,26 +5,30 @@ import { myObj } from "./2.worker";
 import useComlink, {
   createComlink,
   createComlinkSingleton,
+  Comlink,
 } from "react-use-comlink";
 
-console.log("LOADING");
 const useMyClass = createComlink<typeof MyClass>(
   () => new Worker(new URL("./1.worker.ts", import.meta.url))
 );
 
-const Main: React.FC<{ startAt: number }> = (props) => {
+type MainProps = {
+  startAt: number;
+  myclass: Comlink<typeof MyClass>;
+};
+
+const Main: React.FC<MainProps> = ({ startAt, myclass }) => {
   const [counter, setCounter] = useState(0);
   const [unmounted, setUnmounted] = useState(false);
   const [result, setResult] = useState("");
 
-  const myclass = useMyClass();
   const instance = useMemo(() => {
     console.log(myclass);
-    const res = new myclass.proxy(props.startAt);
+    const res = new myclass.proxy(0);
     console.log(`memo: ${res}`);
     console.log(res);
     return res;
-  }, [myclass, props.startAt]);
+  }, [myclass]);
 
   const cb = useCallback(async () => {
     console.log("Getting instance");
@@ -128,10 +132,14 @@ const Sub: React.FunctionComponent = () => {
 };
 
 export const MainApp: React.FunctionComponent = () => {
+  // Doing this here allows my worker communication to
+  // work in the development server.
+  const myclass = useMyClass();
+
   return (
     <React.StrictMode>
       <React.Suspense fallback={<p>Loading</p>}>
-        <Main startAt={Date.now()} />
+        <Main startAt={Date.now()} myclass={myclass} />
       </React.Suspense>
     </React.StrictMode>
   );
